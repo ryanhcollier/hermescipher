@@ -148,12 +148,12 @@ export async function exportGridToVideo(
       ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
       // Draw the spiral dotted line if enabled
-      if (settings.showSpiralLine && Math.min(visibleCount, L) > 1) {
+      if (settings.showSpiralLine && L > 1) {
         ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
         ctx.lineWidth = Math.max(1, cellSize * 0.05);
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
-        for (let i = 0; i < Math.min(visibleCount, L); i++) {
+        for (let i = 0; i < L; i++) {
           const coord = fullCoords[i];
           const gridX = coord.x - minX;
           const gridY = coord.y - minY;
