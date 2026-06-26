@@ -147,13 +147,31 @@ export async function exportGridToVideo(
       ctx.fillStyle = "#000000";
       ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
+      // Draw the spiral dotted line if enabled
+      if (settings.showSpiralLine && Math.min(visibleCount, L) > 1) {
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+        ctx.lineWidth = Math.max(1, cellSize * 0.05);
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        for (let i = 0; i < Math.min(visibleCount, L); i++) {
+          const coord = fullCoords[i];
+          const gridX = coord.x - minX;
+          const gridY = coord.y - minY;
+          const cX = offsetX + gridX * cellSize + cellSize / 2;
+          const cY = offsetY + gridY * cellSize + cellSize / 2;
+          if (i === 0) {
+            ctx.moveTo(cX, cY);
+          } else {
+            ctx.lineTo(cX, cY);
+          }
+        }
+        ctx.stroke();
+        ctx.setLineDash([]); // Reset line dash
+      }
+
       // Draw each cell as a beautiful rounded box in the centering layout
       for (let i = 0; i < L; i++) {
         const isScanned = scannedSet.includes(i);
-        if (!isScanned) {
-          continue;
-        }
-
         const sym = symbols[i];
         const coord = fullCoords[i];
         const gridX = coord.x - minX;
@@ -173,41 +191,50 @@ export async function exportGridToVideo(
         let shadowColor = "rgba(255, 255, 255, 0.4)";
         let shadowBlur = 12;
 
-        const animType = i % 3; // 0: outlined, 1: numbers/text only, 2: solid white fills
-
-        if (settings.colorByFrequency) {
+        if (!isScanned) {
+          // Live UI styling for unscanned cells during playback
+          bgStyle = "#09090b";
+          strokeStyle = "#202024";
+          textStyle = "#3f3f46";
+          drawBg = true;
+          drawBorder = true;
+          shadowBlur = 0;
+        } else if (settings.colorByFrequency) {
           const c = sym.originalChar.toUpperCase();
+          shadowBlur = 0; // No glow for frequency-colored cells in live UI
+          
           if (c === "E") {
             bgStyle = "#ffffff";
-            textStyle = "#000000";
             strokeStyle = "#ffffff";
+            textStyle = "#000000";
           } else if ("TAOIN".includes(c)) {
-            bgStyle = "#f4f4f5";
-            textStyle = "#000000";
-            strokeStyle = "#f4f4f5";
-          } else if ("SRHLD".includes(c)) {
-            bgStyle = "#d4d4d8";
-            textStyle = "#000000";
+            bgStyle = "#e4e4e7";
             strokeStyle = "#d4d4d8";
-          } else if ("UCUMF".includes(c)) {
-            bgStyle = "#a1a1aa";
             textStyle = "#000000";
-            strokeStyle = "#a1a1aa";
-          } else if ("YWGPM".includes(c)) {
+          } else if ("SRHLD".includes(c)) {
             bgStyle = "#71717a";
-            textStyle = "#ffffff";
             strokeStyle = "#71717a";
-          } else if ("BVKXJQZ".includes(c)) {
+            textStyle = "#ffffff";
+          } else if ("UCUMF".includes(c)) {
+            bgStyle = "#3f3f46";
+            strokeStyle = "#52525b";
+            textStyle = "#ffffff";
+          } else if ("YWGPM".includes(c)) {
             bgStyle = "#27272a";
-            textStyle = "#a1a1aa";
             strokeStyle = "#27272a";
-          } else {
+            textStyle = "#d4d4d8";
+          } else if ("BVKXJQZ".includes(c)) {
             bgStyle = "#18181b";
-            textStyle = "#71717a";
             strokeStyle = "#18181b";
+            textStyle = "#71717a";
+          } else {
+            bgStyle = "#09090b";
+            strokeStyle = "#09090b";
+            textStyle = "#52525b";
           }
         } else {
           // If we are not doing colorByFrequency, apply three simultaneous styles
+          const animType = i % 3; // 0: outlined, 1: numbers/text only, 2: solid white fills
           if (animType === 0) {
             // Outlined square
             bgStyle = "transparent";
@@ -239,8 +266,12 @@ export async function exportGridToVideo(
         }
 
         // Draw cell background rounded rect with a glowing drop shadow
-        ctx.shadowColor = shadowColor;
-        ctx.shadowBlur = shadowBlur;
+        if (shadowBlur > 0) {
+          ctx.shadowColor = shadowColor;
+          ctx.shadowBlur = shadowBlur;
+        } else {
+          ctx.shadowBlur = 0;
+        }
 
         if (drawBg && bgStyle !== "transparent") {
           ctx.fillStyle = bgStyle;
@@ -264,7 +295,11 @@ export async function exportGridToVideo(
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
-        if (settings.boxDisplayMode === "number") {
+        if (!isScanned) {
+          ctx.fillStyle = textStyle;
+          ctx.font = `bold ${cellSize * 0.3}px monospace`;
+          ctx.fillText("·", cenX, cenY);
+        } else if (settings.boxDisplayMode === "number") {
           ctx.fillStyle = textStyle;
           ctx.font = `bold ${cellSize * 0.28}px monospace`;
           ctx.fillText(sym.encryptedValue, cenX, cenY);
